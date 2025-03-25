@@ -1,0 +1,202 @@
+1.main
+
+2.confing
+Код config.LoadConfig() пытается загрузить конфигурацию из файла .env. Если это не удается (например, файл .env отсутствует),
+и при этом приложение не запущено в production-окружении, то в консоль выводится сообщение об ошибке. 
+
+3.handlers
+это хендлер фанкс под gin в котором есть обработчик регисра и логина в которм есть структуры
+при логине выдает jwt токен
+Принимают и обрабатывают входящие HTTP-запросы, а также подготавливают и отправляют HTTP-ответы. 
+Они являются точкой входа для внешнего мира (клиентов API) в ваше приложение.
+
+4.midleware
+Этот код представляет собой middleware (промежуточное ПО) для Gin framework, которое выполняет аутентификацию пользователей на основе JWT
+
+Он выполняет следующие шаги:
+Получает значение заголовка Authorization.
+Проверяет, что заголовок Authorization присутствует.
+Удаляет префикс “Bearer ” из заголовка.
+Вызывает AuthService для проверки токена.
+Если токен недействителен, возвращает ошибку 401 Unauthorized.
+Если токен действителен, сохраняет ID пользователя в контексте запроса и вызывает следующий обработчик.
+
+Этот middleware используется для защиты определенных маршрутов в вашем API, требующих аутентификации. 
+Перед тем, как обработчик маршрута будет выполнен, AuthMiddleware проверит токен и убедится, что пользователь аутентифицирован. 
+Если аутентификация не пройдена, middleware предотвратит выполнение обработчика и вернет ошибку клиенту.
+
+5.models
+просто структура для json
+
+6.repositories
+структура для бд
+
+7.servies
+можно сказать это бизнес логика
+Не должны знать, как и откуда пришли данные (HTTP, gRPC, CLI).
+
+
+8.posrtgres
+
+
+Аналогия:
+Представьте себе ресторан:
+handlers - это официанты: Они принимают заказы от клиентов, передают их на кухню и приносят готовую еду клиентам.
+
+services - это повара: Они готовят еду, используя ингредиенты (данные) из кладовой (базы данных) и рецепты (бизнес-логику).
+
+
+
+
+__________________________________________________________________________________________________________________
+порядок структуры проекта
+models/medicine.go (определение структуры Medicine)
+
+internal/repositories/interfaces.go (определение интерфейса MedicineRepository)
+
+internal/repositories/postgres/medicine_repository.go (реализация MedicineRepository для Postgres)
+
+internal/services/medicine_service.go (реализация MedicineService, принимает MedicineRepository в конструкторе)
+
+internal/config/config.go и .env (загрузка конфигурации базы данных)
+
+pkg/database/postgres/postgres.go (подключение к базе данных)
+
+internal/handlers/medicine_handler.go (реализация MedicineHandler, принимает MedicineService в конструкторе)
+
+cmd/api/main.go (инициализация всего, настройка маршрутов)
+
+1.
+Начните с определения моделей данных: medicine.go и user.go. Определите структуру ваших данных. Добавьте теги json:"..." и gorm:"...".
+Почему сейчас: Модели - это основа всего. Определите их сначала, чтобы все остальное строилось на них.
+
+2.
+internal/repositories/interfaces.go: Определите интерфейсы для доступа к данным (репозитории).
+Например, MedicineRepository должен содержать методы GetByID, GetAll, Create, Update, Delete.
+UserRepository - методы для работы с пользователями (GetByID, GetByUsername, Create, Update и т.д.).
+Реализуйте интерфейсы репозиториев для Postgres. Используйте GORM для взаимодействия с базой данных.
+
+3.
+internal/services/medicine_service.go и auth_service.go: Реализуйте бизнес-логику.
+MedicineService использует MedicineRepository для работы с данными о лекарствах.
+AuthService будет содержать логику аутентификации и авторизации пользователей, используя UserRepository.
+Dependency Injection:  MedicineService и AuthService должны принимать интерфейсы репозиториев (а не конкретные реализации) в качестве зависимостей через конструктор.
+Это упрощает тестирование и позволяет менять реализацию репозитория без изменения логики сервисов.
+
+4.
+.env: Создайте .env файл для хранения конфигурационных параметров (URL базы данных, ключи API, порты и т.д.).
+internal/config/config.go: Загрузите конфигурацию из .env файла и предоставьте ее остальным частям приложения.
+
+5.
+internal/handlers/medicine_handler.go и auth_handler.go: Реализуйте обработчики HTTP-запросов.
+MedicineHandler использует MedicineService для обработки запросов, связанных с лекарствами.
+AuthHandler обрабатывает запросы аутентификации (логин, регистрация).
+Dependency Injection: MedicineHandler и AuthHandler должны принимать интерфейсы сервисов в качестве зависимостей через конструктор.
+
+6.
+internal/middleware/auth_middleware.go: Реализуйте промежуточное ПО (middleware) для обработки запросов.
+AuthMiddleware будет проверять аутентификацию пользователя и, возможно, выполнять авторизацию.
+
+7.
+pkg/database/postgres/postgres.go: Создайте функцию для подключения к базе данных Postgres.
+Используйте GORM. Эта функция должна использовать параметры конфигурации из internal/config/config.go.
+Почему pkg/: этот код можно использовать в нескольких микросервисах
+
+8.
+cmd/api/main.go: Основная точка входа в приложение.
+Инициализируйте конфигурацию.
+Подключитесь к базе данных.
+Создайте экземпляры репозиториев, сервисов и обработчиков, передавая зависимости через конструкторы.
+Настройте маршруты (используйте Gin или другой фреймворк).
+Запустите HTTP-сервер.
+Используйте authMiddleware
+
+
+
+__________________________________________________________________________________________________________________________________________
+1.models/
+по сути модель данных + сдесь определяется модель базы данных с помощью gorm
+пример для user:
+'''
+package models
+
+import "gorm.io/gorm"
+
+type User struct {
+    gorm.Model
+    Username string `gorm:"uniqueIndex;not null" json:"username"`
+    Password string `gorm:"not null" json:"password"`
+}
+'''
+_____
+2.repositories/interfaces
+
+'''
+package repositories
+
+import "pharmacy-api/internal/models"
+
+type UserRepository interface {
+    Create(user *models.User) error 
+    GetByUsername(username string) (*models.User, error)
+    GetByID(id uint) (*models.User, error)
+}
+'''
+Create(user *models.User) error:
+Цель: Создание нового пользователя в системе.
+
+GetByUsername(username string) (*models.User, error):
+Цель: Получение информации о пользователе по его имени пользователя (логину).
+
+GetByID(id uint) (*models.User, error):
+Цель: Получение информации о пользователе по его уникальному идентификатору (ID).
+_____
+2.1repositories/user_repository/
+'''
+package postgres
+
+import (
+	"pharmacy-api/internal/models"
+	"gorm.io/gorm"
+)
+
+type UserRepository struct {
+//Эта структура содержит поле db типа *gorm.DB, которое представляет соединение с базой данных.
+	db *gorm.DB
+}
+
+func NewUserRepository(db *gorm.DB) *UserRepository {
+//Конструктор принимает указатель на структуру gorm.DB в качестве аргумента. Это соединение с базой данных.
+//Конструктор возвращает указатель на новый экземпляр структуры UserRepository.
+	return &UserRepository{db: db}
+}
+
+func (r *UserRepository) Create(user *models.User) error {
+//user *models.User: Принимает указатель на структуру models.User, которую нужно создать в базе данных.
+//r.db.Create(user): Использует метод Create из GORM для создания новой записи в таблице, соответствующей структуре User.
+	return r.db.Create(user).Error
+}
+
+func (r *UserRepository) GetByUsername(username string) (*models.User, error) {
+	var user models.User
+	err := r.db.Where("username = ?", username).First(&user).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *UserRepository) GetByID(id uint) (*models.User, error) {
+    var user models.User
+    err := r.db.First(&user, id).Error //Метод First предполагает, что id является первичным ключом таблицы.
+    if err != nil {
+        return nil, err
+    }
+    return &user, nil
+}
+'''
+
+
+______
+3.services/auth_service.go/
+
